@@ -42,24 +42,22 @@ export function SamplingPanel({
           step={0.01}
           onChange={(next) => set('minP', next)}
         />
-        <Field label="Top K" inline>
-          <TextInput
-            type="number"
-            value={value.topK}
-            min={0}
-            onChange={(event) => number('topK', event.target.value)}
-          />
-        </Field>
-        <Field label="Typical P" inline>
-          <TextInput
-            type="number"
-            value={value.typicalP}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(event) => number('typicalP', event.target.value)}
-          />
-        </Field>
+        <RangeField
+          label="Top K"
+          value={value.topK}
+          min={0}
+          max={100}
+          step={1}
+          onChange={(next) => set('topK', next)}
+        />
+        <RangeField
+          label="Typical P"
+          value={value.typicalP}
+          min={0}
+          max={1}
+          step={0.01}
+          onChange={(next) => set('typicalP', next)}
+        />
         <Field label="Sampler order">
           <TextInput
             value={value.samplerOrder}
@@ -220,8 +218,8 @@ function RangeField({
   onChange: (value: number) => void;
 }) {
   return (
-    <Field label={label}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <Field label={label} inline className="sampling-range-field">
+      <div className="range-control-group">
         <input
           type="range"
           min={min}
@@ -229,7 +227,7 @@ function RangeField({
           step={step}
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}
-          style={{ flex: 1 }}
+          className="sampling-slider"
         />
         <TextInput
           type="number"
@@ -238,7 +236,7 @@ function RangeField({
           step={step}
           value={value}
           onChange={(event) => onChange(Number(event.target.value))}
-          style={{ width: '70px' }}
+          className="sampling-number-input"
         />
       </div>
     </Field>

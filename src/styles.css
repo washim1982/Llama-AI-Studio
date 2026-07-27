@@ -366,6 +366,27 @@ pre,
   font-size: 12px;
 }
 
+.select-shell select option,
+select option {
+  background-color: #242428;
+  color: #f4f4f5;
+  padding: 8px 12px;
+}
+
+.select-shell select option:disabled,
+select option:disabled {
+  color: #71717a;
+  background-color: #1a1a1e;
+}
+
+.select-shell select option:checked,
+.select-shell select option:hover,
+select option:checked,
+select option:hover {
+  background-color: #3f3f46;
+  color: #ffffff;
+}
+
 .select-shell select:focus {
   border-color: #7766df;
 }
@@ -414,6 +435,42 @@ pre,
 .field.inline > .select-shell {
   width: 132px;
   flex: 0 0 132px;
+}
+
+.sampling-range-field {
+  width: 100%;
+}
+
+.range-control-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  max-width: 220px;
+  justify-content: flex-end;
+}
+
+.sampling-slider {
+  flex: 1;
+  min-width: 70px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  accent-color: #7559ff;
+  cursor: pointer;
+}
+
+.sampling-number-input,
+.sampling-range-field .input-shell,
+.right-inspector .field.inline > .input-shell {
+  width: 76px !important;
+  flex: 0 0 76px !important;
+}
+
+.right-inspector .field.inline > .input-shell input,
+.sampling-number-input input {
+  text-align: right;
+  padding-right: 6px;
 }
 
 .field-copy {
