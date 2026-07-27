@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Production & Build outputs
+dist/
+dist-electron/
+out/
+release/
+release-builds/
+build/
+.vite/
+
+# Temporary & Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment & Local secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS Generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# Binaries & Downloaded Executables (Local model servers / GGUF testing binaries)
+bin/win32/
+bin/darwin/
+bin/linux/
+*.exe
+!build/icon.ico
