@@ -2,6 +2,7 @@ import {
   Bot,
   Box,
   BrainCircuit,
+  Check,
   ChevronDown,
   CircleStop,
   Copy,
@@ -23,6 +24,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type {
   AppSettings,
   Attachment,
@@ -675,6 +678,58 @@ function attachmentUrl(attachment: Attachment): string {
   return fileName ? `forge-file://attachment/${encodeURIComponent(fileName)}` : ''
 }
 
+function CodeBlock({
+  className,
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
+  const match = /language-(\w+)/.exec(className || '')
+  const language = match ? match[1] : 'text'
+  const [copied, setCopied] = useState(false)
+  const codeString = String(children).replace(/\n$/, '')
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(codeString)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <span className="code-block-lang">{language}</span>
+        <button type="button" className="code-block-copy-btn" onClick={handleCopy}>
+          {copied ? <Check size={13} /> : <Copy size={13} />}
+          <span>{copied ? 'Copied' : 'Copy'}</span>
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={language}
+        style={vscDarkPlus}
+        customStyle={{
+          margin: 0,
+          padding: '14px 16px',
+          background: 'transparent',
+          fontSize: '13px',
+          lineHeight: '1.6',
+          borderRadius: 0,
+        }}
+        codeTagProps={{
+          style: {
+            background: 'transparent',
+            backgroundColor: 'transparent',
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+          },
+        }}
+      >
+        {codeString}
+      </SyntaxHighlighter>
+    </div>
+  )
+}
+
 function MessageBubble({
   message,
   isStreaming,
@@ -737,7 +792,28 @@ function MessageBubble({
           </div>
         )}
         <div className="markdown-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code({ node, inline, className, children, ...props }: any) {
+                const match = /language-(\w+)/.exec(className || '')
+                const codeStr = String(children).replace(/\n$/, '')
+                const isMultiLine = codeStr.includes('\n')
+
+                if (inline || (!match && !isMultiLine)) {
+                  return (
+                    <code className="inline-code" {...props}>
+                      {children}
+                    </code>
+                  )
+                }
+                return <CodeBlock className={className}>{children}</CodeBlock>
+              },
+              pre({ children }: any) {
+                return <>{children}</>
+              },
+            }}
+          >
             {presentation.content}
           </ReactMarkdown>
         </div>
