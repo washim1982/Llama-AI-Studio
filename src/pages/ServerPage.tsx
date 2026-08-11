@@ -55,6 +55,7 @@ export function ServerPage({
   const forgeApi = (window as any).forge || (window as any).forgeApi;
   const [config, setConfig] = useState<LoadConfig>({ ...settings.defaultLoadConfig });
   const [logs, setLogs] = useState<string[]>([]);
+  const [gatewayUrl, setGatewayUrl] = useState<string>();
   const [selectedTopicId, setSelectedTopicId] = useState<DeveloperTopicId>('authentication');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -72,6 +73,12 @@ export function ServerPage({
       });
     });
     return off;
+  }, []);
+
+  useEffect(() => {
+    if (!forgeApi?.getAdminDashboard) return;
+    void forgeApi.getAdminDashboard().then((dashboard: any) => setGatewayUrl(dashboard.gateway.url));
+    return forgeApi.onAdminUpdated?.((dashboard: any) => setGatewayUrl(dashboard.gateway.url));
   }, []);
 
   const start = async () => {
@@ -126,6 +133,7 @@ export function ServerPage({
   };
 
   const topic = findDeveloperTopic(selectedTopicId);
+  const clientBaseUrl = gatewayUrl ?? server.url;
 
   return (
     <div className="page-container" style={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -178,6 +186,7 @@ export function ServerPage({
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
               Mode: {server.mode || 'pinned'} · Model: {server.modelName || selectedModel?.name || 'None'}
             </div>
+            {gatewayUrl && <div style={{ fontSize: '10px', color: 'var(--blue)', marginTop: '4px' }}>Authenticated client gateway: {gatewayUrl}</div>}
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             {server.state === 'running' ? (
@@ -217,12 +226,12 @@ export function ServerPage({
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <span style={{ fontWeight: 600, fontSize: '12px' }}>{topic.requestLabel}</span>
-                <Button onClick={() => handleCopy('req', topic.request.replace('{{BASE_URL}}', server.url))}>
+                <Button onClick={() => handleCopy('req', topic.request.replace('{{BASE_URL}}', clientBaseUrl))}>
                   <Copy size={12} /> {copied === 'req' ? 'Copied' : 'Copy curl'}
                 </Button>
               </div>
               <pre style={{ background: 'var(--console)', padding: '12px', borderRadius: '6px', fontSize: '12px', overflowX: 'auto', border: '1px solid var(--border)' }}>
-                {topic.request.replace('{{BASE_URL}}', server.url)}
+                {topic.request.replace('{{BASE_URL}}', clientBaseUrl)}
               </pre>
             </div>
 

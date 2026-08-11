@@ -18,6 +18,21 @@
 - 🧠 **Collapsible Reasoning Traces**: Supports DeepSeek R1 and reasoning models (`<think>...</think>`), parsing reasoning thoughts into an expandable/collapsible toggle block while keeping the final answer clear.
 - ⚡ **GPU Acceleration & Resource Detection**: Automatic hardware resource detection (CPU cores, RAM, NVIDIA CUDA / Vulkan VRAM) with memory estimation and custom GPU layer offloading controls.
 - 🛠️ **Native `llama.cpp` Agent Tools**: Built-in supervisor for file reading/editing, glob searching, datetime checks, and shell command execution.
+- **Authenticated API Gateway**: Admin-issued per-user API keys, token metering, configurable per-million-token billing, and revocation without restarting inference.
+- **API Operations Dashboard**: Grafana-style traffic metrics, per-key usage and spend, error/latency monitoring, and metadata-only request traces for every API route.
+
+---
+
+## Authenticated client access
+
+The Studio starts a client gateway at `http://127.0.0.1:8181` by default. Start the inference server, open **Admin**, and generate a key for each user or service. The secret is displayed once; only its SHA-256 digest is stored.
+
+```bash
+curl http://127.0.0.1:8181/v1/models \
+  -H "Authorization: Bearer llama_live_YOUR_KEY"
+```
+
+Gateway binding, port, and default input/output prices are configured under **Settings → Application & Keys**. Request traces contain routing, timing, status, token, and cost metadata; prompt and response bodies are not retained.
 
 ---
 

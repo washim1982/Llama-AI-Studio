@@ -5,6 +5,7 @@ import {
   MessageSquareText,
   Server,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import type {
   AppSettings,
@@ -20,6 +21,7 @@ import { DiscoverPage } from './pages/DiscoverPage';
 import { ModelsPage } from './pages/ModelsPage';
 import { ServerPage } from './pages/ServerPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AdminPage } from './pages/AdminPage';
 import { getForgeApi } from './utils';
 
 import logoMark from './assets/logo-mark.svg';
@@ -33,6 +35,7 @@ const navigation: Array<{
   { id: 'models', label: 'My models', icon: Boxes },
   { id: 'discover', label: 'Discover', icon: Compass },
   { id: 'server', label: 'Developer', icon: Server },
+  { id: 'admin', label: 'API admin', icon: ShieldCheck },
 ];
 
 export default function App() {
@@ -222,6 +225,7 @@ export default function App() {
             onModelsChange={updateModels}
           />
         )}
+        {activeView === 'admin' && <AdminPage settings={state.settings} />}
       </main>
     </div>
   );

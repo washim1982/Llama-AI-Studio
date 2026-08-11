@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
 import { existsSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,6 +9,7 @@ import type {
   Attachment,
   ChatRequest,
   ChatSession,
+  CreateApiKeyInput,
   GgufModel,
   LoadConfig,
   RuntimeFlavor,
@@ -24,6 +26,8 @@ import { ModelScanner, scanModelPaths } from './models'
 import { RuntimeManager } from './runtime'
 import { ServerManager } from './server'
 import { AppStore } from './store'
+import { ApiAccessStore } from './apiAccess'
+import { ApiGateway } from './apiGateway'
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
@@ -31,6 +35,8 @@ let mainWindow: BrowserWindow | undefined
 let appStore: AppStore
 let runtimeManager: RuntimeManager
 let serverManager: ServerManager
+let apiAccess: ApiAccessStore
+let apiGateway: ApiGateway
 let huggingFace: HuggingFaceService
 let attachmentsDirectory: string
 const modelScanner = new ModelScanner()
@@ -119,14 +125,22 @@ function registerIpc() {
   }))
 
   ipcMain.handle('app:save-settings', async (_event, settings: AppSettings) => {
+    const previousGateway = appStore.settings.apiGateway
     appStore.settings = settings
     runtimeManager.setPath(settings.runtimePath)
+    if (JSON.stringify(previousGateway) !== JSON.stringify(settings.apiGateway)) {
+      await apiGateway.restart()
+    }
     return appStore.settings
   })
 
   ipcMain.handle('settings:get', () => appStore.settings)
-  ipcMain.handle('settings:save', (_event, s: AppSettings) => {
+  ipcMain.handle('settings:save', async (_event, s: AppSettings) => {
+    const previousGateway = appStore.settings.apiGateway
     appStore.settings = s
+    if (JSON.stringify(previousGateway) !== JSON.stringify(s.apiGateway)) {
+      await apiGateway.restart()
+    }
     return appStore.settings
   })
 
@@ -265,12 +279,25 @@ function registerIpc() {
     const model = appStore.models.find((item) => item.id === modelId)
     if (!model) throw new Error('The selected model is no longer available')
     if (model.validationError) throw new Error(model.validationError)
-    return serverManager.start(model, config)
+    return serverManager.start(model, gatewayProtectedConfig(config))
   })
   ipcMain.handle('server:stop', () => serverManager.stop())
   ipcMain.handle('server:release-memory', () => serverManager.releaseMemory())
   ipcMain.handle('server:status', () => serverManager.currentStatus())
   ipcMain.handle('server:logs', () => serverManager.getLogs())
+  ipcMain.handle('admin:dashboard', () =>
+    apiAccess.dashboard(apiGateway.currentStatus()),
+  )
+  ipcMain.handle('admin:create-api-key', (_event, input: CreateApiKeyInput) => {
+    const generated = apiAccess.createKey(input, appStore.settings.apiGateway)
+    send('admin:updated', apiAccess.dashboard(apiGateway.currentStatus()))
+    return generated
+  })
+  ipcMain.handle('admin:revoke-api-key', (_event, id: string) => {
+    const key = apiAccess.revokeKey(id)
+    send('admin:updated', apiAccess.dashboard(apiGateway.currentStatus()))
+    return key
+  })
   ipcMain.handle('chat:start', (_event, request: ChatRequest) => serverManager.chat(request))
   ipcMain.handle('chat:cancel', (_event, requestId: string) => serverManager.cancelChat(requestId))
 
@@ -338,6 +365,14 @@ function isPathWithin(candidate: string, directory: string): boolean {
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
 }
 
+function gatewayProtectedConfig(config: LoadConfig): LoadConfig {
+  if (!appStore.settings.apiGateway.enabled || config.apiKey) return config
+  return {
+    ...config,
+    apiKey: `llama_internal_${randomBytes(32).toString('base64url')}`,
+  }
+}
+
 app.whenReady().then(async () => {
   // Without an explicit AppUserModelID Windows groups the window under the
   // generic Electron entry and shows its icon in the taskbar instead of ours.
@@ -398,6 +433,14 @@ app.whenReady().then(async () => {
     (line) => send('server:log', line),
     (chunk) => send('chat:chunk', chunk),
   )
+  apiAccess = new ApiAccessStore(path.join(app.getPath('userData'), 'api-gateway'))
+  await apiAccess.initialize()
+  apiGateway = new ApiGateway(
+    () => appStore.settings.apiGateway,
+    () => serverManager.gatewayTarget(),
+    apiAccess,
+    () => send('admin:updated', apiAccess.dashboard(apiGateway.currentStatus())),
+  )
   huggingFace = new HuggingFaceService(
     () => appStore.getHfToken(),
     () => appStore.settings.downloadDirectory,
@@ -408,6 +451,7 @@ app.whenReady().then(async () => {
   )
   registerIpc()
   createWindow()
+  await apiGateway.start()
   const models = await rescanModels()
   modelScanner.watchFolders(appStore.settings.modelDirectories, () => {
     void rescanModels()
@@ -419,7 +463,7 @@ app.whenReady().then(async () => {
     (await runtimeManager.info()).exists
   ) {
     void serverManager
-      .start(firstLoadableModel, appStore.settings.defaultLoadConfig)
+      .start(firstLoadableModel, gatewayProtectedConfig(appStore.settings.defaultLoadConfig))
       .catch((error) =>
         send(
           'server:log',
@@ -440,4 +484,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   void serverManager?.stop()
+  void apiGateway?.stop()
+  void apiAccess?.flush()
 })

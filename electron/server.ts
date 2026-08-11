@@ -61,6 +61,14 @@ export class ServerManager {
     return this.logs
   }
 
+  gatewayTarget() {
+    return {
+      url: this.status.url,
+      apiKey: this.apiKey,
+      running: this.status.state === 'running',
+    }
+  }
+
   async start(model: GgufModel, config: LoadConfig): Promise<ServerStatus> {
     if (
       this.child &&
@@ -102,6 +110,7 @@ export class ServerManager {
       })
     }
     const url = `http://${normalizeHost(config.host)}:${config.port}`
+    const displayArgs = redactSensitiveArguments(args)
     this.apiKey = config.apiKey
     this.runtimeMemory = {}
     this.metricsEnabled = config.metrics
@@ -116,12 +125,12 @@ export class ServerManager {
       modelId: config.onDemandLoading ? undefined : model.id,
       modelApiId: config.onDemandLoading ? undefined : model.apiId,
       modelName: config.onDemandLoading ? undefined : model.name,
-      command: formatCommand(executable, args),
+      command: formatCommand(executable, displayArgs),
       memory: undefined,
       kvUsageRatio: undefined,
       promptCacheBytes: config.cacheRam > 0 ? config.cacheRam * 1024 ** 2 : undefined,
     })
-    this.pushLog(`$ ${formatCommand(executable, args)}`)
+    this.pushLog(`$ ${formatCommand(executable, displayArgs)}`)
 
     const child = spawn(executable, args, {
       cwd: path.dirname(executable),
@@ -699,6 +708,22 @@ function quoteArgument(value: string): string {
 
 function formatCommand(executable: string, args: string[]): string {
   return [executable, ...args].map(quoteArgument).join(' ')
+}
+
+export function redactSensitiveArguments(args: string[]): string[] {
+  let redactNext = false
+  return args.map((argument) => {
+    if (redactNext) {
+      redactNext = false
+      return '[redacted]'
+    }
+    if (argument === '--api-key') {
+      redactNext = true
+      return argument
+    }
+    if (argument.startsWith('--api-key=')) return '--api-key=[redacted]'
+    return argument
+  })
 }
 
 function getEnvWithRuntimePath(executable: string): Record<string, string | undefined> {

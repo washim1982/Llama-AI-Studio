@@ -265,22 +265,51 @@ export function SettingsPage({
         )}
 
         {section === 'application' && (
-          <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Field label="Hugging Face API Token" description="Encrypted safely via Windows safeStorage / DPAPI for private GGUF repositories">
-              <TextInput
-                type="password"
-                value={draft.huggingFaceToken}
-                onChange={(e) => setDraft({ ...draft, huggingFaceToken: e.target.value })}
-                placeholder="hf_..."
-              />
-            </Field>
-            <Field label="Start server automatically on app launch" inline>
-              <Toggle
-                label="Auto-start server"
-                checked={draft.startServerOnLaunch}
-                onChange={(next) => setDraft({ ...draft, startServerOnLaunch: next })}
-              />
-            </Field>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 600 }}>Authenticated API Gateway</h4>
+              <Field label="Enable API gateway" description="Issue per-user credentials and meter all proxied inference calls" inline>
+                <Toggle
+                  label="Enable API gateway"
+                  checked={draft.apiGateway.enabled}
+                  onChange={(enabled) => setDraft({ ...draft, apiGateway: { ...draft.apiGateway, enabled } })}
+                />
+              </Field>
+              <Field label="Network binding" description="Use localhost by default. Choose All interfaces only for a trusted LAN.">
+                <Select value={draft.apiGateway.host} onChange={(event) => setDraft({ ...draft, apiGateway: { ...draft.apiGateway, host: event.target.value } })}>
+                  <option value="127.0.0.1">Localhost only (127.0.0.1)</option>
+                  <option value="0.0.0.0">All network interfaces (0.0.0.0)</option>
+                </Select>
+              </Field>
+              <Field label="Gateway port" description="Clients use this port instead of the private llama-server port.">
+                <TextInput type="number" min="1" max="65535" value={draft.apiGateway.port} onChange={(event) => setDraft({ ...draft, apiGateway: { ...draft.apiGateway, port: Number(event.target.value) } })} />
+              </Field>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <Field label="Default input price / 1M" description="USD rate prefilled when issuing a key">
+                  <TextInput type="number" min="0" step="0.0001" value={draft.apiGateway.defaultInputCostPerMillion} onChange={(event) => setDraft({ ...draft, apiGateway: { ...draft.apiGateway, defaultInputCostPerMillion: Number(event.target.value) } })} />
+                </Field>
+                <Field label="Default output price / 1M" description="USD rate prefilled when issuing a key">
+                  <TextInput type="number" min="0" step="0.0001" value={draft.apiGateway.defaultOutputCostPerMillion} onChange={(event) => setDraft({ ...draft, apiGateway: { ...draft.apiGateway, defaultOutputCostPerMillion: Number(event.target.value) } })} />
+                </Field>
+              </div>
+            </div>
+            <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <Field label="Hugging Face API Token" description="Encrypted safely via Windows safeStorage / DPAPI for private GGUF repositories">
+                <TextInput
+                  type="password"
+                  value={draft.huggingFaceToken}
+                  onChange={(e) => setDraft({ ...draft, huggingFaceToken: e.target.value })}
+                  placeholder="hf_..."
+                />
+              </Field>
+              <Field label="Start server automatically on app launch" inline>
+                <Toggle
+                  label="Auto-start server"
+                  checked={draft.startServerOnLaunch}
+                  onChange={(next) => setDraft({ ...draft, startServerOnLaunch: next })}
+                />
+              </Field>
+            </div>
           </div>
         )}
       </div>

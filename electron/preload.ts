@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
+  AdminDashboardSnapshot,
   AppSettings,
   ChatChunk,
   ChatRequest,
@@ -41,6 +42,9 @@ const api: ElectronApi = {
   releaseServerMemory: () => ipcRenderer.invoke('server:release-memory'),
   getServerStatus: () => ipcRenderer.invoke('server:status'),
   getServerLogs: () => ipcRenderer.invoke('server:logs'),
+  getAdminDashboard: () => ipcRenderer.invoke('admin:dashboard'),
+  createApiKey: (input) => ipcRenderer.invoke('admin:create-api-key', input),
+  revokeApiKey: (id: string) => ipcRenderer.invoke('admin:revoke-api-key', id),
   chat: (request: ChatRequest) => ipcRenderer.invoke('chat:start', request),
   cancelChat: (requestId: string) => ipcRenderer.invoke('chat:cancel', requestId),
   searchHuggingFace: (query: string) => ipcRenderer.invoke('hf:search', query),
@@ -53,6 +57,8 @@ const api: ElectronApi = {
   onServerStatus: (callback: (status: ServerStatus) => void) =>
     listener('server:status-changed', callback),
   onServerLog: (callback: (line: string) => void) => listener('server:log', callback),
+  onAdminUpdated: (callback: (snapshot: AdminDashboardSnapshot) => void) =>
+    listener('admin:updated', callback),
   onChatChunk: (callback: (chunk: ChatChunk) => void) => listener('chat:chunk', callback),
   onDownloadProgress: (callback: (progress: DownloadProgress) => void) =>
     listener('hf:progress', callback),

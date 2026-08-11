@@ -44,15 +44,15 @@ export const developerTopics: DeveloperTopic[] = [
     title: 'Authentication',
     group: 'Core',
     summary:
-      'Protect local endpoints with a bearer token. The health endpoint stays public so clients can perform readiness checks.',
+      'Issue a separate bearer token to every user or service through the Admin dashboard. The health endpoint stays public for readiness checks.',
     endpoints: [
       { method: 'GET', path: '/health', description: 'Public readiness check' },
-      { method: 'GET', path: '/v1/models', description: 'Protected when an API key is configured' },
+      { method: 'GET', path: '/v1/models', description: 'Protected by a client API key' },
     ],
     setup: [
-      'Set API key under Server settings → Serving & endpoints before starting the server.',
-      'Send the key as Authorization: Bearer <key>. Multiple runtime keys can be supplied through advanced arguments.',
-      'Do not treat CORS as authentication; keep the server bound to localhost unless remote access is intentional.',
+      'Generate a user key from Admin → API keys & billing. The secret is shown only once.',
+      'Send the key as Authorization: Bearer <key> to the authenticated gateway URL.',
+      'Use the Settings gateway binding to opt into LAN access; localhost is the secure default.',
     ],
     fields: [
       { name: 'Authorization', description: 'HTTP header containing Bearer followed by the configured key.', required: true },

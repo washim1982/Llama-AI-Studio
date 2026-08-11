@@ -177,6 +177,13 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   ],
   offlineMode: false,
   autoPortFallback: true,
+  apiGateway: {
+    enabled: true,
+    host: '127.0.0.1',
+    port: 8181,
+    defaultInputCostPerMillion: 0,
+    defaultOutputCostPerMillion: 0,
+  },
 };
 
 export function makeDefaultSettings(defaultModelDirectory: string): AppSettings {

@@ -79,6 +79,10 @@ export class AppStore {
         ...this.defaults.settings.defaultSampling,
         ...stored.defaultSampling,
       },
+      apiGateway: {
+        ...this.defaults.settings.apiGateway,
+        ...stored.apiGateway,
+      },
       presets: stored.presets ?? this.defaults.settings.presets,
     }
   }

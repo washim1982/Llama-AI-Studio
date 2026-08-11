@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GgufModel } from '../src/types'
-import { buildModelPreset } from './server'
+import { buildModelPreset, redactSensitiveArguments } from './server'
 
 const model = (overrides: Partial<GgufModel> = {}): GgufModel => ({
   id: 'abcdef123456',
@@ -71,5 +71,16 @@ describe('buildModelPreset', () => {
     const preset = buildModelPreset([model({ apiId: 'default' })])
 
     expect(preset.match(/\[default\]/g)).toHaveLength(1)
+  })
+})
+
+describe('server command security', () => {
+  it('redacts API keys from status and console command text', () => {
+    expect(
+      redactSensitiveArguments(['--host', '127.0.0.1', '--api-key', 'top-secret']),
+    ).toEqual(['--host', '127.0.0.1', '--api-key', '[redacted]'])
+    expect(redactSensitiveArguments(['--api-key=top-secret'])).toEqual([
+      '--api-key=[redacted]',
+    ])
   })
 })

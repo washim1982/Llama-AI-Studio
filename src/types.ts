@@ -1,4 +1,4 @@
-export type ViewId = 'chat' | 'models' | 'discover' | 'server' | 'settings';
+export type ViewId = 'chat' | 'models' | 'discover' | 'server' | 'admin' | 'settings';
 
 export type RuntimeFlavor = 'cpu' | 'vulkan' | 'cuda-12' | 'cuda-13';
 
@@ -201,6 +201,15 @@ export interface AppSettings {
   presets: Preset[];
   offlineMode?: boolean;
   autoPortFallback?: boolean;
+  apiGateway: ApiGatewaySettings;
+}
+
+export interface ApiGatewaySettings {
+  enabled: boolean;
+  host: string;
+  port: number;
+  defaultInputCostPerMillion: number;
+  defaultOutputCostPerMillion: number;
 }
 
 export interface Preset {
@@ -285,6 +294,99 @@ export interface ServerStatus {
   memory?: RuntimeMemory;
   kvUsageRatio?: number;
   promptCacheBytes?: number;
+}
+
+export interface ApiGatewayStatus {
+  state: 'stopped' | 'starting' | 'running' | 'error';
+  url: string;
+  host: string;
+  port: number;
+  error?: string;
+}
+
+export interface ApiKeyRecord {
+  id: string;
+  userName: string;
+  prefix: string;
+  createdAt: number;
+  lastUsedAt?: number;
+  revokedAt?: number;
+  inputCostPerMillion: number;
+  outputCostPerMillion: number;
+}
+
+export interface CreateApiKeyInput {
+  userName: string;
+  inputCostPerMillion?: number;
+  outputCostPerMillion?: number;
+}
+
+export interface GeneratedApiKey {
+  key: ApiKeyRecord;
+  secret: string;
+}
+
+export interface ApiTraceEvent {
+  name: 'authenticated' | 'upstream_started' | 'first_byte' | 'usage_captured' | 'completed' | 'failed';
+  atMs: number;
+  detail?: string;
+}
+
+export interface ApiTrace {
+  id: string;
+  requestId: string;
+  apiKeyId?: string;
+  apiKeyName: string;
+  method: string;
+  path: string;
+  endpoint: string;
+  model?: string;
+  status: number;
+  startedAt: number;
+  durationMs: number;
+  timeToFirstByteMs?: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cost: number;
+  streaming: boolean;
+  clientIp?: string;
+  error?: string;
+  events: ApiTraceEvent[];
+}
+
+export interface ApiUsageSummary {
+  requests: number;
+  errors: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cost: number;
+  p95LatencyMs: number;
+}
+
+export interface ApiKeyUsage extends ApiUsageSummary {
+  key: ApiKeyRecord;
+  lastRequestAt?: number;
+}
+
+export interface ApiUsageBucket {
+  startedAt: number;
+  requests: number;
+  errors: number;
+  tokens: number;
+  cost: number;
+}
+
+export interface AdminDashboardSnapshot {
+  gateway: ApiGatewayStatus;
+  summary: ApiUsageSummary;
+  activeKeys: number;
+  keys: ApiKeyUsage[];
+  traffic: ApiUsageBucket[];
+  traces: ApiTrace[];
+  endpoints: string[];
+  generatedAt: number;
 }
 
 export interface AppState {
@@ -383,6 +485,9 @@ export interface ElectronApi {
   releaseServerMemory: () => Promise<ServerStatus>;
   getServerStatus: () => Promise<ServerStatus>;
   getServerLogs: () => Promise<string[]>;
+  getAdminDashboard: () => Promise<AdminDashboardSnapshot>;
+  createApiKey: (input: CreateApiKeyInput) => Promise<GeneratedApiKey>;
+  revokeApiKey: (id: string) => Promise<ApiKeyRecord>;
   chat: (request: ChatRequest) => Promise<void>;
   cancelChat: (requestId: string) => Promise<void>;
   searchHuggingFace: (query: string) => Promise<HfModelSummary[]>;
@@ -398,6 +503,7 @@ export interface ElectronApi {
   showItemInFolder: (path: string) => Promise<void>;
   onServerStatus: (callback: (status: ServerStatus) => void) => () => void;
   onServerLog: (callback: (line: string) => void) => () => void;
+  onAdminUpdated: (callback: (snapshot: AdminDashboardSnapshot) => void) => () => void;
   onChatChunk: (callback: (chunk: ChatChunk) => void) => () => void;
   onDownloadProgress: (callback: (progress: DownloadProgress) => void) => () => void;
   onRuntimeProgress: (callback: (runtime: RuntimeInfo) => void) => () => void;
