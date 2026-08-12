@@ -4,6 +4,7 @@ import {
   BrainCircuit,
   FolderOpen,
   HardDrive,
+  ImagePlus,
   Import,
   MessageSquareText,
   Play,
@@ -11,6 +12,7 @@ import {
   Search,
   Settings2,
   Trash2,
+  Unlink,
 } from 'lucide-react';
 import type {
   AppSettings,
@@ -84,6 +86,54 @@ export function ModelsPage({
     }
   };
 
+  const chooseVisionPair = async () => {
+    if (!forgeApi?.chooseVisionModelPair) return;
+    setBusy('vision-pair');
+    setError(undefined);
+    try {
+      const existingIds = new Set(models.map((model) => model.id));
+      const next: GgufModel[] = await forgeApi.chooseVisionModelPair();
+      onModelsChange(next);
+      const paired =
+        next.find((model) => !existingIds.has(model.id) && model.mmprojPath) ??
+        [...next]
+          .filter((model) => model.mmprojPath)
+          .sort((a, b) => b.importedAt - a.importedAt)[0];
+      if (paired) onSelectModel(paired.id);
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setBusy(undefined);
+    }
+  };
+
+  const chooseProjector = async () => {
+    if (!selected || !forgeApi?.chooseModelProjector) return;
+    setBusy('projector');
+    setError(undefined);
+    try {
+      onModelsChange(await forgeApi.chooseModelProjector(selected.id));
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setBusy(undefined);
+    }
+  };
+
+  const clearProjector = async () => {
+    if (!selected || !forgeApi?.clearModelProjector) return;
+    setBusy('projector');
+    setError(undefined);
+    try {
+      onModelsChange(await forgeApi.clearModelProjector(selected.id));
+      setConfig((current) => ({ ...current, mmprojPath: '' }));
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setBusy(undefined);
+    }
+  };
+
   const chooseDirectory = async () => {
     if (!forgeApi?.chooseModelDirectory && !forgeApi?.selectModelFolder) return;
     setBusy('directory');
@@ -133,7 +183,7 @@ export function ModelsPage({
     try {
       const status = await forgeApi.startServer(selected.id, {
         ...config,
-        mmprojPath: config.mmprojPath || selected.mmprojPath || '',
+        mmprojPath: selected.mmprojPath || config.mmprojPath || '',
       });
       onServerChange(status);
     } catch (reason) {
@@ -156,6 +206,9 @@ export function ModelsPage({
               <FolderOpen size={14} /> Add Folder
             </Button>
           </div>
+          <Button onClick={chooseVisionPair} loading={busy === 'vision-pair'}>
+            <ImagePlus size={14} /> Add Text + Vision Model Pair
+          </Button>
           <TextInput
             placeholder="Search local models..."
             value={query}
@@ -201,6 +254,7 @@ export function ModelsPage({
                 <span>{m.parameters}</span>
                 <span>{m.quantization}</span>
                 <span>{formatBytes(m.size)}</span>
+                {m.mmprojPath && <span style={{ color: 'var(--accent)' }}>Image ready</span>}
               </div>
             </div>
           ))}
@@ -232,9 +286,37 @@ export function ModelsPage({
 
             {/* Capability Badges */}
             <div style={{ display: 'flex', gap: '8px' }}>
-              {selected.capabilities.vision && <span style={{ fontSize: '11px', padding: '2px 8px', background: 'var(--accent-soft)', color: 'var(--accent)', borderRadius: '12px' }}>Vision / Multimodal</span>}
+              {selected.mmprojPath ? (
+                <span style={{ fontSize: '11px', padding: '2px 8px', background: 'var(--accent-soft)', color: 'var(--accent)', borderRadius: '12px' }}>Vision ready</span>
+              ) : selected.capabilities.vision ? (
+                <span style={{ fontSize: '11px', padding: '2px 8px', background: 'rgba(239, 185, 86, 0.14)', color: 'var(--amber)', borderRadius: '12px' }}>Vision projector required</span>
+              ) : (
+                <span style={{ fontSize: '11px', padding: '2px 8px', background: 'var(--panel-3)', color: 'var(--text-muted)', borderRadius: '12px' }}>Text only</span>
+              )}
               {selected.capabilities.reasoning && <span style={{ fontSize: '11px', padding: '2px 8px', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--green)', borderRadius: '12px' }}>Deep Reasoning</span>}
               {selected.capabilities.tools && <span style={{ fontSize: '11px', padding: '2px 8px', background: 'rgba(59, 130, 246, 0.15)', color: 'var(--blue)', borderRadius: '12px' }}>Tools / Functions</span>}
+            </div>
+
+            <div className={`vision-pair-card ${selected.mmprojPath ? 'paired' : ''}`}>
+              <div className="vision-pair-icon"><ImagePlus size={19} /></div>
+              <div className="vision-pair-copy">
+                <strong>{selected.mmprojPath ? 'Text + image input enabled' : 'Add image input support'}</strong>
+                <span>
+                  {selected.mmprojPath
+                    ? `Paired with ${selected.mmprojName ?? fileName(selected.mmprojPath)}`
+                    : 'Pair this language GGUF with its matching mmproj.gguf vision projector.'}
+                </span>
+                {selected.mmprojPath && <code title={selected.mmprojPath}>{selected.mmprojPath}</code>}
+              </div>
+              {selected.mmprojSize && <span className="vision-pair-size">{formatBytes(selected.mmprojSize)}</span>}
+              <Button variant={selected.mmprojPath ? 'secondary' : 'primary'} onClick={chooseProjector} loading={busy === 'projector'}>
+                <ImagePlus size={13} /> {selected.mmprojPath ? 'Change projector' : 'Select mmproj'}
+              </Button>
+              {selected.mmprojPath && (
+                <IconButton label="Remove vision projector pairing" onClick={() => void clearProjector()} disabled={busy === 'projector'}>
+                  <Unlink size={14} />
+                </IconButton>
+              )}
             </div>
 
             {/* Load Config Panel */}
@@ -257,4 +339,8 @@ export function ModelsPage({
       </div>
     </div>
   );
+}
+
+function fileName(filePath: string): string {
+  return filePath.split(/[\\/]/).pop() || filePath;
 }

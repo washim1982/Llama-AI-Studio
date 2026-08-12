@@ -22,7 +22,13 @@ import {
 import { defaultSampling, makeDefaultSettings } from './defaults'
 import { readGgufChatTemplate } from './gguf'
 import { HuggingFaceService } from './huggingface'
-import { ModelScanner, scanModelPaths } from './models'
+import {
+  inspectVisionModelPair,
+  ModelScanner,
+  pairVisionProjector,
+  scanModelPaths,
+} from './models'
+import { inspectGguf } from './gguf'
 import { RuntimeManager } from './runtime'
 import { ServerManager } from './server'
 import { AppStore } from './store'
@@ -182,6 +188,75 @@ function registerIpc() {
     mergeModels(imported)
     return appStore.models
   })
+  ipcMain.handle('models:choose-vision-pair', async () => {
+    const modelResult = await dialog.showOpenDialog({
+      title: 'Select the text/language GGUF model',
+      properties: ['openFile'],
+      filters: [{ name: 'GGUF text model', extensions: ['gguf'] }],
+    })
+    if (modelResult.canceled || !modelResult.filePaths[0]) return appStore.models
+    const projectorResult = await dialog.showOpenDialog({
+      title: 'Select the matching mmproj GGUF vision projector',
+      properties: ['openFile'],
+      defaultPath: path.dirname(modelResult.filePaths[0]),
+      filters: [{ name: 'GGUF vision projector (mmproj)', extensions: ['gguf'] }],
+    })
+    if (projectorResult.canceled || !projectorResult.filePaths[0]) return appStore.models
+    const paired = await inspectVisionModelPair(
+      modelResult.filePaths[0],
+      projectorResult.filePaths[0],
+    )
+    const existing = appStore.models.find((item) => item.id === paired.id)
+    if (existing) {
+      appStore.models = appStore.models.map((item) =>
+        item.id === paired.id
+          ? {
+              ...existing,
+              ...paired,
+              apiId: existing.apiId,
+              mmprojPath: paired.mmprojPath,
+              mmprojName: paired.mmprojName,
+              mmprojSize: paired.mmprojSize,
+            }
+          : item,
+      )
+      send('models:updated', appStore.models)
+    } else {
+      mergeModels([paired])
+    }
+    return appStore.models
+  })
+  ipcMain.handle('models:choose-projector', async (_event, modelId: string) => {
+    const model = appStore.models.find((item) => item.id === modelId)
+    if (!model) throw new Error('The selected model is no longer available')
+    const result = await dialog.showOpenDialog({
+      title: `Select the mmproj GGUF for ${model.name}`,
+      properties: ['openFile'],
+      defaultPath: path.dirname(model.path),
+      filters: [{ name: 'GGUF vision projector (mmproj)', extensions: ['gguf'] }],
+    })
+    if (result.canceled || !result.filePaths[0]) return appStore.models
+    const projector = await inspectGguf(result.filePaths[0])
+    const paired = pairVisionProjector(model, projector)
+    appStore.models = appStore.models.map((item) => (item.id === modelId ? paired : item))
+    send('models:updated', appStore.models)
+    return appStore.models
+  })
+  ipcMain.handle('models:clear-projector', (_event, modelId: string) => {
+    let found = false
+    appStore.models = appStore.models.map((item) => {
+      if (item.id !== modelId) return item
+      found = true
+      const next = { ...item }
+      delete next.mmprojPath
+      delete next.mmprojName
+      delete next.mmprojSize
+      return next
+    })
+    if (!found) throw new Error('The selected model is no longer available')
+    send('models:updated', appStore.models)
+    return appStore.models
+  })
   ipcMain.handle('models:choose-directory', async () => {
     const result = await dialog.showOpenDialog({
       title: 'Add model directory',
@@ -279,6 +354,10 @@ function registerIpc() {
     const model = appStore.models.find((item) => item.id === modelId)
     if (!model) throw new Error('The selected model is no longer available')
     if (model.validationError) throw new Error(model.validationError)
+    const projectorPath = model.mmprojPath || config.mmprojPath
+    if (projectorPath && !existsSync(projectorPath)) {
+      throw new Error('The paired mmproj vision projector is missing. Select it again in My Models.')
+    }
     return serverManager.start(model, gatewayProtectedConfig(config))
   })
   ipcMain.handle('server:stop', () => serverManager.stop())
@@ -336,7 +415,17 @@ function mergeModels(
   )
   const merged = new Map(retained.map((model) => [model.id, model]))
   for (const model of models) {
-    merged.set(model.id, { ...merged.get(model.id), ...model })
+    const existing = merged.get(model.id)
+    const persistedProjector =
+      existing?.mmprojPath && existsSync(existing.mmprojPath)
+        ? {
+            mmprojPath: existing.mmprojPath,
+            mmprojName: existing.mmprojName,
+            mmprojSize: existing.mmprojSize,
+            capabilities: { ...model.capabilities, vision: true },
+          }
+        : {}
+    merged.set(model.id, { ...existing, ...model, ...persistedProjector })
   }
   appStore.models = [...merged.values()]
     .filter((model) => !model.fileName.toLowerCase().includes('mmproj'))

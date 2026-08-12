@@ -91,25 +91,55 @@ export async function scanModelPaths(paths: string[]): Promise<GgufModel[]> {
     models.push(...inspected.filter((item): item is GgufModel => Boolean(item)));
   }
 
-  const projectors = models.filter((model) => model.fileName.toLowerCase().includes('mmproj'));
+  const projectors = models.filter(isVisionProjector);
   for (const model of models) {
-    if (model.fileName.toLowerCase().includes('mmproj')) continue;
-    const sibling = projectors.find(
+    if (isVisionProjector(model)) continue;
+    const siblings = projectors.filter(
       (projector) => path.dirname(projector.path) === path.dirname(model.path),
     );
-    if (sibling) {
-      model.mmprojPath = sibling.path;
-      if (model.capabilities) {
-        model.capabilities.vision = true;
-      }
-    }
+    // A single colocated projector is unambiguous. When a folder contains
+    // several projectors, require an explicit pairing in the model manager.
+    if (siblings.length === 1) Object.assign(model, pairVisionProjector(model, siblings[0]));
   }
 
   return aggregateSplitGgufModels(
     models
-      .filter((model) => !model.fileName.toLowerCase().includes('mmproj'))
+      .filter((model) => !isVisionProjector(model))
       .sort((a, b) => b.importedAt - a.importedAt)
   );
+}
+
+export function isVisionProjector(model: GgufModel): boolean {
+  return (
+    model.fileName.toLowerCase().includes('mmproj') ||
+    String(model.metadata['general.type'] ?? '').toLowerCase() === 'mmproj'
+  );
+}
+
+export function pairVisionProjector(model: GgufModel, projector: GgufModel): GgufModel {
+  if (isVisionProjector(model)) throw new Error('Select the text/language GGUF as the main model');
+  if (!isVisionProjector(projector)) {
+    throw new Error('The selected vision file is not an mmproj GGUF projector');
+  }
+  if (projector.validationError) throw new Error(projector.validationError);
+  return {
+    ...model,
+    mmprojPath: projector.path,
+    mmprojName: projector.fileName,
+    mmprojSize: projector.size,
+    capabilities: { ...model.capabilities, vision: true },
+  };
+}
+
+export async function inspectVisionModelPair(
+  modelPath: string,
+  projectorPath: string,
+): Promise<GgufModel> {
+  const [model, projector] = await Promise.all([
+    inspectGguf(modelPath),
+    inspectGguf(projectorPath),
+  ]);
+  return pairVisionProjector(model, projector);
 }
 
 function aggregateSplitGgufModels(models: GgufModel[]): GgufModel[] {

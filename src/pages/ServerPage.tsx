@@ -93,7 +93,7 @@ export function ServerPage({
       onServerChange(
         await forgeApi.startServer(selectedModel.id, {
           ...config,
-          mmprojPath: config.mmprojPath || selectedModel.mmprojPath || '',
+          mmprojPath: selectedModel.mmprojPath || config.mmprojPath || '',
         }),
       );
     } catch (reason) {

@@ -54,6 +54,8 @@ export interface GgufModel {
   importedAt: number;
   sourceRepo?: string;
   mmprojPath?: string;
+  mmprojName?: string;
+  mmprojSize?: number;
   validationState?: 'valid' | 'incomplete' | 'invalid';
   validationError?: string;
   isSplit?: boolean;
@@ -469,6 +471,9 @@ export interface ElectronApi {
   getRuntimeHelp: () => Promise<{ raw: string; flags: LlamaFlag[] }>;
   getRuntimeResources: () => Promise<RuntimeResources>;
   chooseModelFiles: () => Promise<GgufModel[]>;
+  chooseVisionModelPair: () => Promise<GgufModel[]>;
+  chooseModelProjector: (modelId: string) => Promise<GgufModel[]>;
+  clearModelProjector: (modelId: string) => Promise<GgufModel[]>;
   chooseModelDirectory: () => Promise<GgufModel[]>;
   scanModels: () => Promise<GgufModel[]>;
   removeModelFolder?: (folderPath: string) => Promise<AppSettings>;

@@ -26,6 +26,11 @@ const api: ElectronApi = {
   getRuntimeHelp: () => ipcRenderer.invoke('runtime:help'),
   getRuntimeResources: () => ipcRenderer.invoke('runtime:resources'),
   chooseModelFiles: () => ipcRenderer.invoke('models:choose-files'),
+  chooseVisionModelPair: () => ipcRenderer.invoke('models:choose-vision-pair'),
+  chooseModelProjector: (modelId: string) =>
+    ipcRenderer.invoke('models:choose-projector', modelId),
+  clearModelProjector: (modelId: string) =>
+    ipcRenderer.invoke('models:clear-projector', modelId),
   chooseModelDirectory: () => ipcRenderer.invoke('models:choose-directory'),
   scanModels: () => ipcRenderer.invoke('models:scan'),
   removeModel: (id: string) => ipcRenderer.invoke('models:remove', id),

@@ -288,6 +288,10 @@ export function ChatPage({
     const api = getForgeApi()
     if (!draft.trim() || !activeChat || !selectedModel || runningRequestId || !api) return
     setError(undefined)
+    if (attachments.length && !selectedModel.mmprojPath) {
+      setError('Pair this text model with its matching mmproj.gguf in My Models before sending images.')
+      return
+    }
     try {
       const demandMode = settings.defaultLoadConfig.onDemandLoading
       if (
@@ -299,7 +303,7 @@ export function ChatPage({
         await api.startServer(selectedModel.id, {
           ...settings.defaultLoadConfig,
           mmprojPath:
-            settings.defaultLoadConfig.mmprojPath || selectedModel.mmprojPath || '',
+            selectedModel.mmprojPath || settings.defaultLoadConfig.mmprojPath || '',
         })
       }
       const requestId = crypto.randomUUID()
@@ -570,7 +574,7 @@ export function ChatPage({
                 <IconButton
                   label="Attach images"
                   onClick={() => void addImages()}
-                  disabled={!selectedModel?.capabilities.vision && !selectedModel?.mmprojPath}
+                  disabled={!selectedModel?.mmprojPath}
                 >
                   <ImagePlus size={17} />
                 </IconButton>

@@ -23,6 +23,14 @@
 
 ---
 
+## Text and vision model pairing
+
+Multimodal llama.cpp models normally use two GGUF files: the language model and its matching `mmproj.gguf` vision projector. In **My Models**, choose **Add Text + Vision Model Pair**, select the text/language GGUF first, and then select its matching `mmproj` file. You can also select an existing text model and use **Select mmproj** to add or change its projector.
+
+The saved pair is loaded together in pinned and on-demand server modes. Image attachment in Chat becomes available only when the selected model has a valid projector pairing.
+
+---
+
 ## Authenticated client access
 
 The Studio starts a client gateway at `http://127.0.0.1:8181` by default. Start the inference server, open **Admin**, and generate a key for each user or service. The secret is displayed once; only its SHA-256 digest is stored.

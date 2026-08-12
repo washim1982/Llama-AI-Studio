@@ -106,7 +106,7 @@ export class ServerManager {
       args = buildLlamaServerArgs(model.path, {
         ...config,
         alias: config.alias || model.apiId,
-        mmprojPath: config.mmprojPath || model.mmprojPath || '',
+        mmprojPath: model.mmprojPath || config.mmprojPath || '',
       })
     }
     const url = `http://${normalizeHost(config.host)}:${config.port}`
