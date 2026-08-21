@@ -137,7 +137,7 @@ export default function App() {
         <div className="titlebar-brand">
           <img src={logoMark} className="titlebar-logo" alt="Llama AI Studio" />
           <span>Llama AI Studio</span>
-          <span className="version-pill">0.3.6</span>
+          <span className="version-pill">0.3.7</span>
         </div>
       </div>
       <aside className="navigation-rail">

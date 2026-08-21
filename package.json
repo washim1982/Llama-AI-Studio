@@ -1,7 +1,7 @@
 {
   "name": "llama-ai-studio",
   "productName": "Llama AI Studio",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Local-first desktop studio for discovering, running, and supervising GGUF models with llama.cpp",
   "main": "dist-electron/main.js",
   "type": "module",
